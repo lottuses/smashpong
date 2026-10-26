@@ -2024,7 +2024,6 @@
 
     .faq-item.is-expanding .faq-icon,
     .faq-item[open]:not(.is-closing) .faq-icon {
-      transform: rotate(135deg);
       background: var(--volt-accent);
       color: var(--bg-outer-void);
       border-color: var(--text-white);
