@@ -69,6 +69,32 @@ document.querySelectorAll('.btn-brutal-primary, .btn-brutal-secondary, .carousel
   });
 });
 
+// ==========================================================
+// BLOQUEIO DE SCROLL SEM SALTO DE LAYOUT (COMPENSAÇÃO DA SCROLLBAR)
+// ==========================================================
+function lockBodyScroll(lockClass) {
+  const isAlreadyLocked =
+    document.body.classList.contains('menu-open') ||
+    document.body.classList.contains('lightbox-open');
+
+  if (!isAlreadyLocked) {
+    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    document.documentElement.style.setProperty('--scrollbar-comp', `${scrollbarWidth}px`);
+  }
+  document.body.classList.add(lockClass);
+}
+
+function unlockBodyScroll(lockClass) {
+  document.body.classList.remove(lockClass);
+  const stillLocked =
+    document.body.classList.contains('menu-open') ||
+    document.body.classList.contains('lightbox-open');
+
+  if (!stillLocked) {
+    document.documentElement.style.setProperty('--scrollbar-comp', '0px');
+  }
+}
+
 const navbar = document.getElementById('navbar');
 const navMenuToggle = document.getElementById('nav-menu-toggle');
 const siteNav = document.getElementById('site-nav');
@@ -106,10 +132,10 @@ function closeMobileMenu(restoreFocus = true) {
   if (!navMenuToggle || !siteNav) return;
   navMenuToggle.setAttribute('aria-expanded', 'false');
   siteNav.classList.remove('is-open');
-  document.body.classList.remove('menu-open');
+  unlockBodyScroll('menu-open');
   setMenuLabel(false);
   if (lastMenuTrigger && restoreFocus) {
-    lastMenuTrigger.focus();
+    lastMenuTrigger.focus({ preventScroll: true });
   }
   lastMenuTrigger = null;
 }
@@ -119,7 +145,8 @@ navMenuToggle?.addEventListener('click', () => {
   if (!isOpen) lastMenuTrigger = navMenuToggle;
   navMenuToggle.setAttribute('aria-expanded', String(!isOpen));
   siteNav.classList.toggle('is-open', !isOpen);
-  document.body.classList.toggle('menu-open', !isOpen);
+  if (!isOpen) lockBodyScroll('menu-open');
+  else unlockBodyScroll('menu-open');
   setMenuLabel(!isOpen);
   if (!isOpen && navLinks.length) {
     if (!prefersReducedMotion) {
@@ -129,7 +156,7 @@ navMenuToggle?.addEventListener('click', () => {
         { y: 0, opacity: 1, duration: 0.28, stagger: 0.035, ease: 'power2.out', clearProps: 'transform,opacity' }
       );
     }
-    window.setTimeout(() => navLinks[0].focus(), 50);
+    window.setTimeout(() => navLinks[0].focus({ preventScroll: true }), 50);
   }
 });
 
@@ -186,11 +213,11 @@ window.addEventListener('scroll', updateActiveNavLink, { passive: true });
 updateActiveNavLink();
 
 // ==========================================================
-// MOTOR DE ZOOM INTERATIVO (DESKTOP: CLIQUE ONDE QUISER | MOBILE: PINÇA)
+// MOTOR DE ZOOM INTERATIVO EXCLUSIVO DO LIGHTBOX
+// (DESKTOP: CLIQUE ONDE QUISER + PAN | MOBILE: PINÇA + PAN)
 // ==========================================================
-function attachInteractiveZoom(container, getActiveImgFn) {
-  if (!container || container._zoomAttached) return null;
-  container._zoomAttached = true;
+function attachLightboxZoom(stage, modalImg) {
+  if (!stage || !modalImg) return null;
 
   let scale = 1;
   let tx = 0;
@@ -216,31 +243,29 @@ function attachInteractiveZoom(container, getActiveImgFn) {
   }
 
   function applyTransform(animate = true) {
-    const img = getActiveImgFn();
-    if (!img || img.tagName !== 'IMG' || img.hidden) return;
+    if (modalImg.hidden) return;
 
-    img.classList.add('zoom-target-img');
-    const baseW = img.offsetWidth || container.clientWidth;
-    const baseH = img.offsetHeight || container.clientHeight;
+    const baseW = modalImg.offsetWidth || stage.clientWidth;
+    const baseH = modalImg.offsetHeight || stage.clientHeight;
     const maxTx = Math.max(0, (baseW * scale - baseW) / 2);
     const maxTy = Math.max(0, (baseH * scale - baseH) / 2);
 
     tx = clamp(tx, -maxTx, maxTx);
     ty = clamp(ty, -maxTy, maxTy);
 
-    img.classList.toggle('is-gesture-active', !animate);
+    modalImg.classList.toggle('is-gesture-active', !animate);
 
     if (scale <= 1.01) {
       scale = 1;
       tx = 0;
       ty = 0;
-      img.style.transform = '';
-      img.classList.remove('is-zoomed');
-      container.classList.remove('zoom-container-active');
+      modalImg.style.transform = '';
+      modalImg.classList.remove('is-zoomed');
+      stage.classList.remove('zoom-container-active');
     } else {
-      img.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
-      img.classList.add('is-zoomed');
-      container.classList.add('zoom-container-active');
+      modalImg.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
+      modalImg.classList.add('is-zoomed');
+      stage.classList.add('zoom-container-active');
     }
   }
 
@@ -248,21 +273,18 @@ function attachInteractiveZoom(container, getActiveImgFn) {
     scale = 1;
     tx = 0;
     ty = 0;
-    const img = getActiveImgFn();
-    if (img && img.tagName === 'IMG') {
-      img.classList.toggle('is-gesture-active', !animate);
-      img.style.transform = '';
-      img.classList.remove('is-zoomed');
-    }
-    container.classList.remove('zoom-container-active');
+    isPanning = false;
+    isPinching = false;
+    modalImg.classList.toggle('is-gesture-active', !animate);
+    modalImg.style.transform = '';
+    modalImg.classList.remove('is-zoomed');
+    stage.classList.remove('zoom-container-active');
   }
 
-  // DESKTOP: Clique onde o usuário quiser para dar zoom nesse ponto exato + arrastar (pan)
-  container.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || scale <= 1) return;
-    if (e.target.closest('button, a, .frame-mini-controls, .custom-video-player, .img-zoom-badge, .lightbox-nav-btn')) return;
-    const img = getActiveImgFn();
-    if (!img || img.tagName !== 'IMG' || img.hidden) return;
+  // DESKTOP: Arrastar (Pan) quando a imagem está com zoom
+  stage.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || scale <= 1 || modalImg.hidden) return;
+    if (e.target.closest('button, .custom-video-player, .lightbox-nav-btn')) return;
 
     isPanning = true;
     panMoved = false;
@@ -286,22 +308,16 @@ function attachInteractiveZoom(container, getActiveImgFn) {
   window.addEventListener('mouseup', () => {
     if (isPanning) {
       isPanning = false;
-      const img = getActiveImgFn();
-      if (img) img.classList.remove('is-gesture-active');
+      modalImg.classList.remove('is-gesture-active');
     }
   });
 
-  container.addEventListener('click', (e) => {
-    if (e.target.closest('button, a, .frame-mini-controls, .custom-video-player, .img-zoom-badge, .lightbox-nav-btn, .slide-caption')) return;
-    // Ignora cliques simulados pelo touch em dispositivos móveis (o mobile usa pinça)
+  // DESKTOP: Clique onde o utilizador quiser na imagem para dar zoom naquele ponto
+  stage.addEventListener('click', (e) => {
+    if (modalImg.hidden) return;
+    if (e.target.closest('button, .custom-video-player, .lightbox-nav-btn')) return;
     if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
     if (window.matchMedia('(pointer: coarse)').matches) return;
-
-    const slideEl = container.closest('.carousel-slide') || (container.classList.contains('carousel-slide') ? container : null);
-    if (slideEl && !slideEl.classList.contains('is-center')) return;
-
-    const img = getActiveImgFn();
-    if (!img || img.tagName !== 'IMG' || img.hidden) return;
 
     if (panMoved) {
       panMoved = false;
@@ -309,16 +325,14 @@ function attachInteractiveZoom(container, getActiveImgFn) {
       return;
     }
 
-    if (container._lastSwipeDist && container._lastSwipeDist > 12) return;
-
-    e.stopPropagation();
+    if (stage._lastSwipeDist && stage._lastSwipeDist > 12) return;
 
     if (scale > 1) {
       resetZoom(true);
     } else {
-      const rect = img.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      const rect = modalImg.getBoundingClientRect();
+      const clickX = clamp(e.clientX - rect.left, 0, rect.width);
+      const clickY = clamp(e.clientY - rect.top, 0, rect.height);
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
 
@@ -329,13 +343,9 @@ function attachInteractiveZoom(container, getActiveImgFn) {
     }
   });
 
-  // MOBILE: Zoom com Pinça (2 dedos) + Pan com 1 dedo quando ampliado
-  container.addEventListener('touchstart', (e) => {
-    const img = getActiveImgFn();
-    if (!img || img.tagName !== 'IMG' || img.hidden) return;
-
-    const slideEl = container.closest('.carousel-slide') || (container.classList.contains('carousel-slide') ? container : null);
-    if (slideEl && !slideEl.classList.contains('is-center')) return;
+  // MOBILE: Pinça com 2 dedos + Pan com 1 dedo quando ampliado
+  stage.addEventListener('touchstart', (e) => {
+    if (modalImg.hidden) return;
 
     if (e.touches.length === 2) {
       isPinching = true;
@@ -345,7 +355,7 @@ function attachInteractiveZoom(container, getActiveImgFn) {
       initialPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
       initialPinchScale = scale;
 
-      const rect = img.getBoundingClientRect();
+      const rect = modalImg.getBoundingClientRect();
       const currentCenterX = rect.left + rect.width / 2;
       const currentCenterY = rect.top + rect.height / 2;
       const midClientX = (t1.clientX + t2.clientX) / 2;
@@ -357,7 +367,7 @@ function attachInteractiveZoom(container, getActiveImgFn) {
       startTy = ty;
       e.preventDefault();
     } else if (e.touches.length === 1 && scale > 1) {
-      if (e.target.closest('button, a, .frame-mini-controls, .custom-video-player, .img-zoom-badge, .lightbox-nav-btn')) return;
+      if (e.target.closest('button, .custom-video-player, .lightbox-nav-btn')) return;
       isPanning = true;
       panStartX = e.touches[0].clientX;
       panStartY = e.touches[0].clientY;
@@ -366,9 +376,8 @@ function attachInteractiveZoom(container, getActiveImgFn) {
     }
   }, { passive: false });
 
-  container.addEventListener('touchmove', (e) => {
-    const img = getActiveImgFn();
-    if (!img || img.tagName !== 'IMG' || img.hidden) return;
+  stage.addEventListener('touchmove', (e) => {
+    if (modalImg.hidden) return;
 
     if (isPinching && e.touches.length === 2) {
       e.preventDefault();
@@ -414,19 +423,17 @@ function attachInteractiveZoom(container, getActiveImgFn) {
     }
   }
 
-  container.addEventListener('touchend', onTouchEnd);
-  container.addEventListener('touchcancel', () => {
+  stage.addEventListener('touchend', onTouchEnd);
+  stage.addEventListener('touchcancel', () => {
     isPinching = false;
     isPanning = false;
     if (scale <= 1.05) resetZoom(true);
   });
 
-  const controller = {
+  return {
     reset: resetZoom,
     isZoomed: () => scale > 1 || isPinching
   };
-  container._zoomController = controller;
-  return controller;
 }
 
 // ==========================================================
@@ -733,25 +740,13 @@ function initCenteredLoopCarousels() {
       const gallery = sectionGalleries.get(groupId);
       const galleryTotal = gallery ? gallery.items.length : total;
 
-      let badge = slide.querySelector('.img-zoom-badge');
-      if (!badge) {
-        badge = document.createElement('button');
-        badge.type = 'button';
+      if (!slide.querySelector('.img-zoom-badge')) {
+        const badge = document.createElement('span');
         badge.className = 'img-zoom-badge';
-        badge.setAttribute('aria-label', `Expandir foto ${slideIdx + 1} de ${galleryTotal} em tela cheia`);
+        badge.setAttribute('aria-hidden', 'true');
         badge.textContent = `⛶ ${slideIdx + 1}/${galleryTotal}`;
         slide.appendChild(badge);
       }
-
-      badge.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (typeof openSectionLightbox === 'function') {
-          openSectionLightbox(groupId, slideIdx, slide);
-        }
-      });
-
-      // Aplica o Zoom por Clique (Desktop) e Pinça (Mobile) a cada slide da galeria
-      attachInteractiveZoom(slide, () => slide.querySelector('img'));
     });
 
     function getCenterOffset(index) {
@@ -764,7 +759,6 @@ function initCenteredLoopCarousels() {
     function updateActiveState() {
       const realIdx = ((currentIndex - total) % total + total) % total;
       allSlides.forEach((s, i) => {
-        if (i !== currentIndex) s._zoomController?.reset(false);
         s.classList.toggle('is-center', i === currentIndex);
         s.setAttribute('aria-hidden', String(i !== currentIndex));
       });
@@ -781,8 +775,6 @@ function initCenteredLoopCarousels() {
     }
 
     function moveToIndex(index, animate = true) {
-      allSlides[currentIndex]?._zoomController?.reset(false);
-
       if (!animate || prefersReducedMotion) {
         let targetIdx = index;
         if (targetIdx >= total * 2) targetIdx -= total;
@@ -838,8 +830,6 @@ function initCenteredLoopCarousels() {
     let isDragging = false;
 
     viewport?.addEventListener('pointerdown', (e) => {
-      const centerSlide = allSlides[currentIndex];
-      if (centerSlide?._zoomController?.isZoomed()) return;
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -849,13 +839,9 @@ function initCenteredLoopCarousels() {
     window.addEventListener('pointerup', (e) => {
       if (!isDragging) return;
       isDragging = false;
-      const centerSlide = allSlides[currentIndex];
-      if (centerSlide?._zoomController?.isZoomed()) return;
-
       const diffX = e.clientX - startX;
       const diffY = e.clientY - startY;
       lastDragDistance = Math.hypot(diffX, diffY);
-      if (centerSlide) centerSlide._lastSwipeDist = lastDragDistance;
 
       if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 35) {
         if (diffX < 0) nextBtn?.click();
@@ -869,18 +855,27 @@ function initCenteredLoopCarousels() {
 
     allSlides.forEach((slide, idx) => {
       slide.addEventListener('click', (e) => {
-        if (e.target.closest('.img-zoom-badge')) return;
         const moveDist = lastDragDistance || Math.hypot(e.clientX - startX, e.clientY - startY);
         if (startX !== 0 && moveDist > 12) return;
         if (isAnimating) return;
 
         if (idx !== currentIndex) {
           moveToIndex(idx, true);
+          return;
         }
+
+        const img = slide.querySelector('img');
+        if (!img || typeof openSectionLightbox !== 'function') return;
+        const groupId = img.getAttribute('data-group-id') || 'galeria-clube';
+        const slideIdx = parseInt(img.getAttribute('data-slide-index') || '0', 10);
+        openSectionLightbox(groupId, slideIdx, slide);
       });
     });
 
-    window.addEventListener('resize', () => moveToIndex(currentIndex, false));
+    window.addEventListener('resize', () => {
+      if (document.body.classList.contains('lightbox-open')) return;
+      moveToIndex(currentIndex, false);
+    });
 
     const wrapperGroupId = wrapper.getAttribute('data-gallery-group');
     if (wrapperGroupId) {
@@ -923,8 +918,8 @@ function initSiteImageLightbox() {
   const lightboxPlayer = stage && modalVideo ? createVideoPlayerController(stage, modalVideo) : null;
   if (lightboxPlayer) lightboxPlayer.setVisible(false);
 
-  // Ativa Zoom por Clique (Desktop) e Pinça (Mobile) também dentro do Lightbox
-  const stageZoom = attachInteractiveZoom(stage, () => (!modalImg.hidden ? modalImg : null));
+  // Zoom exclusivo dentro do Lightbox (clique no desktop e pinça no mobile)
+  const stageZoom = attachLightboxZoom(stage, modalImg);
 
   let modalDragStartX = 0;
   let modalDragStartY = 0;
@@ -994,7 +989,9 @@ function initSiteImageLightbox() {
     document.querySelectorAll('.multi-media-frame > video, #location-guide-video').forEach(syncSiteVideo);
   }
 
-  function renderLightboxSlide(index, direction = 0) {
+let renderedThumbGroupId = null;
+
+  function renderLightboxSlide(index, direction = 0, isInitialOpen = false) {
     const gallery = sectionGalleries.get(currentGroupId);
     if (!gallery || !gallery.items.length) return;
 
@@ -1004,11 +1001,14 @@ function initSiteImageLightbox() {
     activeIdx = ((index % total) + total) % total;
     const item = gallery.items[activeIdx];
 
-    pageSyncers.get(currentGroupId)?.(activeIdx);
+    if (!isInitialOpen) {
+      pageSyncers.get(currentGroupId)?.(activeIdx);
+    }
 
     if (modalGroupTitle) modalGroupTitle.textContent = gallery.title;
     const isVideo = item.type === 'video' && !!modalVideo;
     const activeEl = isVideo ? modalVideo : modalImg;
+
     if (modalVideo) {
       releaseModalVideo();
       if (isVideo) {
@@ -1044,6 +1044,7 @@ function initSiteImageLightbox() {
         lightboxPlayer?.setVisible(false);
       }
     }
+
     modalImg.hidden = isVideo;
     if (!isVideo) {
       modalImg.src = item.src;
@@ -1061,26 +1062,38 @@ function initSiteImageLightbox() {
         btn.classList.toggle('is-active', isCurrent);
         btn.setAttribute('aria-selected', String(isCurrent));
         if (isCurrent) {
-          btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          btn.scrollIntoView({
+            behavior: isInitialOpen ? 'instant' : 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+          });
         }
       });
     }
 
-    if (!prefersReducedMotion) {
+    if (!prefersReducedMotion && !isInitialOpen) {
       const fromX = direction > 0 ? 28 : direction < 0 ? -28 : 0;
       gsap.fromTo(
         activeEl,
         { x: fromX, scale: 0.98, opacity: 0 },
-        { x: 0, scale: 1, opacity: 1, duration: 0.22, ease: 'power2.out' }
+        { x: 0, scale: 1, opacity: 1, duration: 0.2, ease: 'power2.out' }
       );
+    } else {
+      gsap.set(activeEl, { clearProps: 'transform,opacity' });
     }
   }
 
   function buildLightboxThumbnails(groupId) {
     if (!modalThumbs) return;
+    // Se já construiu as miniaturas desta mesma seção antes, reaproveita o DOM!
+    if (renderedThumbGroupId === groupId && modalThumbs.children.length > 0) return;
+    renderedThumbGroupId = groupId;
     modalThumbs.innerHTML = '';
+
     const gallery = sectionGalleries.get(groupId);
     if (!gallery) return;
+
+    const frag = document.createDocumentFragment();
 
     gallery.items.forEach((item, idx) => {
       const btn = document.createElement('button');
@@ -1103,16 +1116,19 @@ function initSiteImageLightbox() {
         tImg.src = item.thumbSrc;
         tImg.alt = '';
         tImg.loading = 'lazy';
+        tImg.decoding = 'async';
         tImg.setAttribute('draggable', 'false');
         btn.appendChild(tImg);
       }
 
       btn.addEventListener('click', () => {
         const dir = idx > activeIdx ? 1 : idx < activeIdx ? -1 : 0;
-        renderLightboxSlide(idx, dir);
+        renderLightboxSlide(idx, dir, false);
       });
-      modalThumbs.appendChild(btn);
+      frag.appendChild(btn);
     });
+
+    modalThumbs.appendChild(frag);
   }
 
   function openLightbox(groupId, index = 0, triggerEl = null) {
@@ -1120,14 +1136,15 @@ function initSiteImageLightbox() {
     currentGroupId = groupId;
     lastTriggerEl = triggerEl;
     activeIdx = index;
+
     pauseSiteVideos();
     buildLightboxThumbnails(groupId);
-    renderLightboxSlide(index, 0);
+    renderLightboxSlide(index, 0, true);
 
+    lockBodyScroll('lightbox-open');
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('lightbox-open');
-    window.setTimeout(() => closeBtn?.focus(), 40);
+    window.setTimeout(() => closeBtn?.focus({ preventScroll: true }), 40);
   }
 
   openSectionLightbox = openLightbox;
@@ -1142,9 +1159,9 @@ function initSiteImageLightbox() {
     releaseModalVideo();
     resumeSiteVideos();
     modal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('lightbox-open');
+    unlockBodyScroll('lightbox-open');
     if (lastTriggerEl && typeof lastTriggerEl.focus === 'function') {
-      lastTriggerEl.focus();
+      lastTriggerEl.focus({ preventScroll: true });
     }
   }
 
@@ -1175,25 +1192,14 @@ function initSiteImageLightbox() {
 
     frame.classList.add('zoomable-media');
 
-    const badge = document.createElement('button');
-    badge.type = 'button';
+    const badge = document.createElement('span');
     badge.className = 'img-zoom-badge';
-    badge.setAttribute('aria-label', `Expandir mídia em tela cheia (1 de ${total})`);
+    badge.setAttribute('aria-hidden', 'true');
     badge.textContent = `⛶ 1/${total}`;
-    badge.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openLightbox(groupId, currentFrameIdx, frame);
-    });
     frame.appendChild(badge);
 
     const frameVideo = imgs.find((el) => el.tagName === 'VIDEO');
     const framePlayer = frameVideo ? createVideoPlayerController(frame, frameVideo) : null;
-
-    // Conecta o Zoom Interativo (Clique Desktop + Pinça Mobile) ao frame multimídia
-    const frameZoom = attachInteractiveZoom(frame, () => {
-      const activeEl = imgs[currentFrameIdx];
-      return activeEl && activeEl.tagName === 'IMG' ? activeEl : null;
-    });
 
     const dots = [];
     let moreBadge = null;
@@ -1305,7 +1311,6 @@ function initSiteImageLightbox() {
     }
 
     function setFrameSlide(newIdx) {
-      frameZoom?.reset(false);
       currentFrameIdx = ((newIdx % total) + total) % total;
       imgs.forEach((im, idx) => {
         const on = idx === currentFrameIdx;
@@ -1314,7 +1319,6 @@ function initSiteImageLightbox() {
       });
       syncCompactDots();
       badge.textContent = `⛶ ${currentFrameIdx + 1}/${total}`;
-      badge.setAttribute('aria-label', `Expandir mídia em tela cheia (${currentFrameIdx + 1} de ${total})`);
       updateFrameVideoUI();
     }
 
@@ -1327,8 +1331,7 @@ function initSiteImageLightbox() {
     let isFrameDragging = false;
 
     frame.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.frame-mini-controls, .custom-video-player, .img-zoom-badge')) return;
-      if (frameZoom?.isZoomed()) return;
+      if (e.target.closest('.frame-mini-controls, .custom-video-player')) return;
       isFrameDragging = true;
       frameStartX = e.clientX;
       frameStartY = e.clientY;
@@ -1338,12 +1341,9 @@ function initSiteImageLightbox() {
     window.addEventListener('pointerup', (e) => {
       if (!isFrameDragging) return;
       isFrameDragging = false;
-      if (frameZoom?.isZoomed()) return;
-
       const diffX = e.clientX - frameStartX;
       const diffY = e.clientY - frameStartY;
       frameDragDist = Math.hypot(diffX, diffY);
-      frame._lastSwipeDist = frameDragDist;
 
       if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
         if (diffX < 0) setFrameSlide(currentFrameIdx + 1);
@@ -1361,27 +1361,14 @@ function initSiteImageLightbox() {
     });
 
     frame.setAttribute('tabindex', '0');
-    frame.setAttribute('role', 'region');
-    frame.setAttribute('aria-label', `Galeria interativa (${total} mídias): ${frame.getAttribute('data-gallery-title') || ''}`);
+    frame.setAttribute('role', 'button');
+    frame.setAttribute('aria-label', `Abrir galeria desta seção (${total} mídias): ${frame.getAttribute('data-gallery-title') || ''}`);
 
-    // Se o elemento ativo for vídeo, clicar nele alterna Play/Pause
     frame.addEventListener('click', (e) => {
-      if (e.target.closest('.frame-mini-controls, .custom-video-player, .img-zoom-badge')) return;
+      if (e.target.closest('.frame-mini-controls, .custom-video-player')) return;
       const moveDist = frameDragDist || Math.hypot(e.clientX - frameStartX, e.clientY - frameStartY);
       if (frameStartX !== 0 && moveDist > 12) return;
-
-      const activeEl = imgs[currentFrameIdx];
-      if (activeEl && activeEl.tagName === 'VIDEO') {
-        activeEl.muted = true;
-        if (activeEl.paused) {
-          activeEl._userPaused = false;
-          activeEl.play().catch(() => {});
-        } else {
-          activeEl._userPaused = true;
-          activeEl.pause();
-        }
-        framePlayer?.syncUI();
-      }
+      openLightbox(groupId, currentFrameIdx, frame);
     });
 
     frame.addEventListener('keydown', (e) => {
@@ -1522,7 +1509,7 @@ function initLocationMediaSwitcher() {
     }
 
     if (shouldFocus) {
-      (showVideo ? videoTab : mapTab).focus();
+      (showVideo ? videoTab : mapTab).focus({ preventScroll: true });
     }
   }
 
@@ -1553,7 +1540,7 @@ function setupTabs(tabs, panels, getTargetId, animatePanel) {
       panel.classList.add('active');
       if (shouldAnimate && !prefersReducedMotion) animatePanel(panel);
     }
-    if (focus) tab.focus();
+    if (focus) tab.focus({ preventScroll: true });
   }
 
   tabs.forEach((tab, i) => {
