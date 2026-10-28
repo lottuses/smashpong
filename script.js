@@ -902,6 +902,7 @@ function initSiteImageLightbox() {
     if (!groupId || !imgs.length) return;
 
     const total = imgs.length;
+    const MAX_VISIBLE_DOTS = 3;
     let currentFrameIdx = 0;
 
     frame.classList.add('zoomable-media');
@@ -916,6 +917,7 @@ function initSiteImageLightbox() {
     const framePlayer = frameVideo ? createVideoPlayerController(frame, frameVideo) : null;
 
     const dots = [];
+    let moreBadge = null;
 
     if (total > 1) {
       const controls = document.createElement('div');
@@ -923,17 +925,34 @@ function initSiteImageLightbox() {
 
       const dotsWrap = document.createElement('div');
       dotsWrap.className = 'frame-mini-dots';
-      for (let i = 0; i < total; i++) {
+
+      const visibleCount = Math.min(total, MAX_VISIBLE_DOTS);
+      for (let i = 0; i < visibleCount; i++) {
         const d = document.createElement('button');
         d.type = 'button';
         d.className = 'frame-mini-dot' + (i === 0 ? ' is-active' : '');
         d.setAttribute('aria-label', `Alternar para mídia ${i + 1}`);
         d.addEventListener('click', (e) => {
           e.stopPropagation();
-          setFrameSlide(i);
+          const targetSlide = Number(d.dataset.slideIdx ?? i);
+          setFrameSlide(targetSlide);
         });
         dotsWrap.appendChild(d);
         dots.push(d);
+      }
+
+      if (total > MAX_VISIBLE_DOTS) {
+        const extraCount = total - MAX_VISIBLE_DOTS;
+        moreBadge = document.createElement('button');
+        moreBadge.type = 'button';
+        moreBadge.className = 'frame-mini-more';
+        moreBadge.textContent = `+${extraCount}`;
+        moreBadge.setAttribute('aria-label', `Mais ${extraCount} mídias. Clique para avançar`);
+        moreBadge.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setFrameSlide(currentFrameIdx + 1);
+        });
+        dotsWrap.appendChild(moreBadge);
       }
 
       const arrowsWrap = document.createElement('div');
@@ -942,7 +961,7 @@ function initSiteImageLightbox() {
       const prevMini = document.createElement('button');
       prevMini.type = 'button';
       prevMini.className = 'frame-mini-nav prev';
-      prevMini.setAttribute('aria-label', 'Foto anterior deste ambiente');
+      prevMini.setAttribute('aria-label', 'Mídia anterior deste ambiente');
       prevMini.innerHTML = '<span>‹</span>';
       prevMini.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -952,7 +971,7 @@ function initSiteImageLightbox() {
       const nextMini = document.createElement('button');
       nextMini.type = 'button';
       nextMini.className = 'frame-mini-nav next';
-      nextMini.setAttribute('aria-label', 'Próxima foto deste ambiente');
+      nextMini.setAttribute('aria-label', 'Próxima mídia deste ambiente');
       nextMini.innerHTML = '<span>›</span>';
       nextMini.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -965,6 +984,31 @@ function initSiteImageLightbox() {
       controls.appendChild(dotsWrap);
       controls.appendChild(arrowsWrap);
       frame.appendChild(controls);
+    }
+
+    function syncCompactDots() {
+      if (!dots.length) return;
+      if (total <= MAX_VISIBLE_DOTS) {
+        dots.forEach((d, idx) => {
+          d.dataset.slideIdx = String(idx);
+          d.classList.toggle('is-active', idx === currentFrameIdx);
+        });
+        return;
+      }
+
+      const windowStart = Math.max(0, Math.min(currentFrameIdx - 1, total - MAX_VISIBLE_DOTS));
+      dots.forEach((d, slotIdx) => {
+        const mappedIdx = windowStart + slotIdx;
+        d.dataset.slideIdx = String(mappedIdx);
+        d.setAttribute('aria-label', `Alternar para mídia ${mappedIdx + 1}`);
+        d.classList.toggle('is-active', mappedIdx === currentFrameIdx);
+      });
+
+      if (moreBadge) {
+        const remaining = total - MAX_VISIBLE_DOTS;
+        moreBadge.textContent = `+${remaining}`;
+        moreBadge.classList.toggle('is-active', currentFrameIdx >= MAX_VISIBLE_DOTS);
+      }
     }
 
     function updateFrameVideoUI() {
@@ -988,11 +1032,12 @@ function initSiteImageLightbox() {
         im.classList.toggle('is-active-img', on);
         if (im.tagName === 'VIDEO') syncSiteVideo(im);
       });
-      dots.forEach((d, idx) => d.classList.toggle('is-active', idx === currentFrameIdx));
+      syncCompactDots();
       badge.textContent = `⛶ ${currentFrameIdx + 1}/${total}`;
       updateFrameVideoUI();
     }
 
+    syncCompactDots();
     updateFrameVideoUI();
 
     let frameStartX = 0;
