@@ -1236,7 +1236,7 @@ function initLocationMediaSwitcher() {
     videoPane.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
-  switchLocationView('video', false);
+  switchLocationView('map', false);
 }
 
 initLocationMediaSwitcher();

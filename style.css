@@ -2039,7 +2039,7 @@ border-color: var(--volt-accent);
 background: var(--volt-accent);
 color: var(--bg-outer-void);
 border-color: var(--text-white);
-transform: rotate(45deg);
+transform: rotate(90deg);
 }
 
 .faq-content-wrap {
@@ -2255,6 +2255,31 @@ min-height: 430px;
 
 .location-pane[hidden] {
 display: none !important;
+}
+
+/* Mapa e vídeo ocupam exatamente o mesmo palco; o conteúdo não define a altura */
+.location-view-stage {
+container-type: size;
+}
+
+/* Vídeo "Como Chegar": quadrado 1:1 que cabe no palco, centralizado e responsivo */
+#loc-pane-video {
+background: #05020B;
+overflow: hidden;
+flex: none;
+width: min(100cqw, 100cqh);
+aspect-ratio: 1 / 1;
+min-height: 0;
+align-self: center;
+margin: auto;
+}
+
+#loc-pane-video video {
+width: 100%;
+height: 100%;
+aspect-ratio: 1 / 1;
+object-fit: cover;
+display: block;
 }
 
 .location-video-pane {

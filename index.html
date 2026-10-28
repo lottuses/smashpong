@@ -46,7 +46,7 @@
         "sameAs": [
           "https://www.instagram.com/smashpongtm",
           "https://www.tiktok.com/@smash.pong",
-          "https://www.youtube.com/@smashpongtm"
+          "https://www.youtube.com/@SmashPongCentrodetreinamentode"
         ]
       }
     ]
@@ -884,10 +884,6 @@
             <h2 class="section-title" id="location-title">Onde Estamos e Como Chegar</h2>
             <p class="section-sublead">Fácil acesso pelo Pistão Sul, próximo ao metrô e com estacionamento tranquilo nas imediações.</p>
           </div>
-          <a href="https://maps.google.com/?q=QS+03+EPCT+Lote+13+Sala+201+Pistao+Sul+Aguas+Claras+Brasilia+DF" target="_blank" rel="noopener noreferrer" class="btn-brutal-primary">
-            <span>Abrir Rota no GPS</span>
-            <span aria-hidden="true">↗</span>
-          </a>
         </div>
 
         <div class="location-grid">
@@ -934,45 +930,47 @@
           <div class="map-frame gs-scroll-fade">
             <div class="map-header-bar">
               <span><strong>LOCALIZAÇÃO •</strong> QS 03, EPCT, LOTE 13, SALA 201 — PISTÃO SUL</span>
-              <div class="location-media-tabs" role="tablist" aria-label="Alternar entre Vídeo de localização e Mapa">
-                <button type="button" class="loc-tab-btn active" role="tab" aria-selected="true" aria-controls="loc-pane-video" id="tab-loc-video" data-loc-view="video">
-                  <span>▶ Vídeo: Como Chegar</span>
-                </button>
-                <button type="button" class="loc-tab-btn" role="tab" aria-selected="false" aria-controls="loc-pane-map" id="tab-loc-map" data-loc-view="map">
-                  <span>🗺️ Mapa Interativo</span>
-                </button>
-              </div>
+              <div class="location-media-tabs" role="tablist" aria-label="Alternar entre Mapa e Vídeo de localização">
+  <button type="button" class="loc-tab-btn active" role="tab" aria-selected="true" aria-controls="loc-pane-map" id="tab-loc-map" data-loc-view="map">
+    <span>🗺️ Mapa Interativo</span>
+  </button>
+  <button type="button" class="loc-tab-btn" role="tab" aria-selected="false" aria-controls="loc-pane-video" id="tab-loc-video" data-loc-view="video">
+    <span>▶ Vídeo: Como Chegar</span>
+  </button>
+</div>
             </div>
 
             <div class="location-view-stage">
-              <div class="location-pane location-video-pane is-active" id="loc-pane-video" role="tabpanel" aria-labelledby="tab-loc-video" data-gallery-group="localizacao-video" data-gallery-title="COMO CHEGAR • PISTÃO SUL (QS 03 LOTE 13, SALA 201)">
-                <video
-                  id="location-guide-video"
-                  src="assets/copy_A657A05A-B220-4D7B-AF42-C168377BB7E7.mp4"
-                  data-fallback-src="assets/tabletennis.mp4"
-                  autoplay
-                  muted
-                  loop
-                  playsinline
-                  preload="metadata"
-                  disablepictureinpicture
-                  data-alt="Vídeo mostrando como chegar na Smash Pong — Pistão Sul, QS 03, Lote 13, Sala 201">
-                </video>
-                <button type="button" class="img-zoom-badge location-video-expand" id="location-video-expand-btn" aria-label="Expandir vídeo de localização em tela cheia">
-                  ⛶ EXPANDIR VÍDEO
-                </button>
-              </div>
+  <!-- Painel do Mapa vem primeiro e ganha a classe is-active -->
+  <div class="location-pane location-video-pane is-active" id="loc-pane-map" role="tabpanel" aria-labelledby="tab-loc-map">
+    <iframe
+      title="Mapa interativo com a localização da Smash Pong em Águas Claras, Brasília"
+      src="https://maps.google.com/maps?q=QS%2003%20EPCT%20Lote%2013%20Aguas%20Claras%20Brasilia%20DF&t=&z=16&ie=UTF8&iwloc=&output=embed"
+      allowfullscreen=""
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+  </div>
 
-              <div class="location-pane" id="loc-pane-map" role="tabpanel" aria-labelledby="tab-loc-map" hidden>
-                <iframe
-                  title="Mapa interativo com a localização da Smash Pong em Águas Claras, Brasília"
-                  src="https://maps.google.com/maps?q=QS%2003%20EPCT%20Lote%2013%20Aguas%20Claras%20Brasilia%20DF&t=&z=16&ie=UTF8&iwloc=&output=embed"
-                  allowfullscreen=""
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
-              </div>
-            </div>
+  <!-- Painel do Vídeo fica em segundo e ganha o atributo hidden -->
+  <div class="location-pane" id="loc-pane-video" data-gallery-group="localizacao-video" data-gallery-title="LOCALIZAÇÃO • COMO CHEGAR" role="tabpanel" aria-labelledby="tab-loc-video" hidden>
+    <video
+      id="location-guide-video"
+      src="assets/copy_A657A05A-B220-4D7B-AF42-C168377BB7E7.mp4"
+      data-fallback-src="assets/tabletennis.mp4"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="metadata"
+      disablepictureinpicture
+      data-alt="Vídeo mostrando como chegar na Smash Pong — Pistão Sul, QS 03, Lote 13, Sala 201">
+    </video>
+    <button type="button" class="img-zoom-badge location-video-expand" id="location-video-expand-btn" aria-label="Expandir vídeo de localização em tela cheia">
+      ⛶ EXPANDIR VÍDEO
+    </button>
+  </div>
+</div>
           </div>
         </div>
       </section>
@@ -1023,7 +1021,7 @@
             </a>
           </li>
           <li>
-            <a href="https://www.youtube.com/@smashpongtm" target="_blank" rel="noopener noreferrer" class="contact-card-link" aria-label="Canal oficial no YouTube Smash Pong">
+            <a href="https://www.youtube.com/@SmashPongCentrodetreinamentode" target="_blank" rel="noopener noreferrer" class="contact-card-link" aria-label="Canal oficial no YouTube Smash Pong">
               <span class="contact-channel"><span>YOUTUBE</span><span>↗</span></span>
               <span class="contact-val">Smash Pong</span>
             </a>
