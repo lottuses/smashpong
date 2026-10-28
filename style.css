@@ -2920,9 +2920,6 @@ main {
   border-color: var(--text-white);
 }
 
-/* ==========================================================
-   LIGHTBOX & EFEITO DE ZOOM (CLIQUE DESKTOP + PINÇA MOBILE)
-   ========================================================== */
 .lightbox-modal {
   position: fixed;
   inset: 0;
@@ -2947,7 +2944,6 @@ main {
 .lightbox-backdrop {
   position: absolute;
   inset: 0;
-  /* Fundo sólido levemente translúcido sem backdrop-filter (zero custo de GPU) */
   background: rgba(4, 1, 9, 0.96);
   cursor: zoom-out;
 }
@@ -3244,7 +3240,6 @@ main {
   border-color: var(--volt-accent);
 }
 
-/* Reprodutor de Vídeo Brutalista */
 .custom-video-player {
   position: absolute;
   left: 0.85rem;
@@ -3393,7 +3388,6 @@ main {
   flex-shrink: 0;
 }
 
-/* Player compacto dentro da miniatura (.off-thumb-box) */
 .off-thumb-box .custom-video-player {
   left: 0.38rem;
   right: 0.38rem;

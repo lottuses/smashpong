@@ -69,9 +69,6 @@ document.querySelectorAll('.btn-brutal-primary, .btn-brutal-secondary, .carousel
   });
 });
 
-// ==========================================================
-// BLOQUEIO DE SCROLL SEM SALTO DE LAYOUT (COMPENSAÇÃO DA SCROLLBAR)
-// ==========================================================
 function lockBodyScroll(lockClass) {
   const isAlreadyLocked =
     document.body.classList.contains('menu-open') ||
@@ -212,10 +209,6 @@ function updateActiveNavLink() {
 window.addEventListener('scroll', updateActiveNavLink, { passive: true });
 updateActiveNavLink();
 
-// ==========================================================
-// MOTOR DE ZOOM INTERATIVO EXCLUSIVO DO LIGHTBOX
-// (DESKTOP: CLIQUE ONDE QUISER + PAN | MOBILE: PINÇA + PAN)
-// ==========================================================
 function attachLightboxZoom(stage, modalImg) {
   if (!stage || !modalImg) return null;
 
@@ -281,7 +274,6 @@ function attachLightboxZoom(stage, modalImg) {
     stage.classList.remove('zoom-container-active');
   }
 
-  // DESKTOP: Arrastar (Pan) quando a imagem está com zoom
   stage.addEventListener('mousedown', (e) => {
     if (e.button !== 0 || scale <= 1 || modalImg.hidden) return;
     if (e.target.closest('button, .custom-video-player, .lightbox-nav-btn')) return;
@@ -312,7 +304,6 @@ function attachLightboxZoom(stage, modalImg) {
     }
   });
 
-  // DESKTOP: Clique onde o utilizador quiser na imagem para dar zoom naquele ponto
   stage.addEventListener('click', (e) => {
     if (modalImg.hidden) return;
     if (e.target.closest('button, .custom-video-player, .lightbox-nav-btn')) return;
@@ -343,7 +334,6 @@ function attachLightboxZoom(stage, modalImg) {
     }
   });
 
-  // MOBILE: Pinça com 2 dedos + Pan com 1 dedo quando ampliado
   stage.addEventListener('touchstart', (e) => {
     if (modalImg.hidden) return;
 
@@ -436,9 +426,6 @@ function attachLightboxZoom(stage, modalImg) {
   };
 }
 
-// ==========================================================
-// REPRODUTOR DE VÍDEO CUSTOMIZADO
-// ==========================================================
 const PLAYBACK_SPEEDS = [1, 1.25, 1.5, 2, 0.5];
 
 function formatMediaTime(seconds) {
@@ -918,7 +905,6 @@ function initSiteImageLightbox() {
   const lightboxPlayer = stage && modalVideo ? createVideoPlayerController(stage, modalVideo) : null;
   if (lightboxPlayer) lightboxPlayer.setVisible(false);
 
-  // Zoom exclusivo dentro do Lightbox (clique no desktop e pinça no mobile)
   const stageZoom = attachLightboxZoom(stage, modalImg);
 
   let modalDragStartX = 0;
@@ -1085,7 +1071,6 @@ let renderedThumbGroupId = null;
 
   function buildLightboxThumbnails(groupId) {
     if (!modalThumbs) return;
-    // Se já construiu as miniaturas desta mesma seção antes, reaproveita o DOM!
     if (renderedThumbGroupId === groupId && modalThumbs.children.length > 0) return;
     renderedThumbGroupId = groupId;
     modalThumbs.innerHTML = '';
@@ -1418,9 +1403,6 @@ let renderedThumbGroupId = null;
 
 initSiteImageLightbox();
 
-// ==========================================================
-// SEÇÃO DE LOCALIZAÇÃO — VÍDEO "COMO CHEGAR" + MAPA
-// ==========================================================
 function initLocationMediaSwitcher() {
   const videoTab = document.getElementById('tab-loc-video');
   const mapTab = document.getElementById('tab-loc-map');
